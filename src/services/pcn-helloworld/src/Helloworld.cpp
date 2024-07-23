@@ -34,6 +34,7 @@ Helloworld::Helloworld(const std::string name, const HelloworldJsonObject &conf)
   update_ports_map();
 
   addPortsList(conf.getPorts());
+  initialize_crypto();
 }
 
 Helloworld::~Helloworld() {
@@ -42,7 +43,62 @@ Helloworld::~Helloworld() {
 
 void Helloworld::packet_in(Ports &port, polycube::service::PacketInMetadata &md,
                            const std::vector<uint8_t> &packet) {
-  logger()->info("packet arrived to the slowpath from port {0}", port.name());
+    logger()->info("packet arrived to the slowpath from port {0}", port.name());
+
+    // ペイロード部分の暗号化
+    int out_len1 = 0, out_len2 = 0;
+    EVP_CIPHER_CTX_reset(ctx);
+    EVP_EncryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, key, iv);
+
+    if (EVP_EncryptUpdate(ctx, packet.data(), &out_len1, packet.data(), packet.size()) != 1) {
+        logger()->error("EVP_EncryptUpdate failed");
+        return;
+    }
+
+    if (EVP_EncryptFinal_ex(ctx, packet.data(), &out_len1, &out_len2) != 1) {
+        logger()->error("EVP_EncryptFinal_ex failed");
+        return;
+    }
+
+    // パケットの全体サイズの調整
+    packet.resize(payload_offset + out_len1 + out_len2);
+
+    // パケットの送信
+    EthernetII p(&packet[0], packet.size());
+    port.send_packet_out(p);
+}
+
+int Helloworld::initialize_crypto() {
+    // キーの初期化（実際の使用では安全に管理する必要があります）
+  key = reinterpret_cast<unsigned char *>("0123456789abcdef");
+  
+  iv = new unsigned char[iv_len];
+  if (!iv) {
+    print_error("Failed to allocate IV");
+    return -1;
+  }
+  if (RAND_bytes(iv, iv_len) != 1) {
+    print_error("Failed to generate random IV");
+    return -1;
+  }
+  ctx = EVP_CIPHER_CTX_new();
+  if (!ctx) {
+    print_error("Failed to create ENV_CIPHER_CTX");
+    return -1;
+  }
+  if (EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), NULL, NULL, NULL) != 1) {
+    print_error("EVP_EncrptInit_ex failed");
+    return -1;
+  }
+  if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, iv_len, NULL) != 1) {
+    print_error("Failed to set IV length for GCM");
+    return -1;
+  }
+  if (EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv) != 1) {
+    print_error("Failed to initialize key and IV for GCM");
+    return -1;
+  }
+  return 0;
 }
 
 HelloworldActionEnum Helloworld::getAction() {

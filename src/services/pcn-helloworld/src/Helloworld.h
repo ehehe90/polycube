@@ -20,9 +20,23 @@
 
 #include "Ports.h"
 
+#include <tins/ethernetII.h>
+#include <openssl/evp.h>
+#include <netinet/ip.h>  // struct iphdr
+#include <netinet/tcp.h> // struct tcphdr
+#include <netinet/udp.h> // struct udphdr
+#include <netinet/if_ether.h>
+
 using namespace polycube::service::model;
 
 class Helloworld : public HelloworldBase {
+ private:
+  EVP_CIPHER_CTX *ctx;
+  unsigned char *key, *iv;
+  const int iv_len = 12;
+  unsigned char tag[16];
+  const int tag_len = 16;
+
  public:
   Helloworld(const std::string name, const HelloworldJsonObject &conf);
   virtual ~Helloworld();
@@ -41,6 +55,7 @@ class Helloworld : public HelloworldBase {
   /// </summary>
   HelloworldActionEnum getAction() override;
   void setAction(const HelloworldActionEnum &value) override;
+  void initialize_crypto();
  private:
   // saves the indexes in the ports maps used when action is forward
   void update_ports_map();
