@@ -55,7 +55,7 @@ class Helloworld : public HelloworldBase {
   /// </summary>
   HelloworldActionEnum getAction() override;
   void setAction(const HelloworldActionEnum &value) override;
-  void initialize_crypto();
+  // int initialize_crypto();
  private:
   // saves the indexes in the ports maps used when action is forward
   void update_ports_map();
