@@ -22,15 +22,18 @@
 
 #include <tins/ethernetII.h>
 #include <openssl/evp.h>
-#include <netinet/ip.h>  // struct iphdr
-#include <netinet/tcp.h> // struct tcphdr
-#include <netinet/udp.h> // struct udphdr
-#include <netinet/if_ether.h>
-
+#include <linux/ip.h> // iphdr
+#include <linux/ipv6.h> //ipv6hdr
+#include <linux/udp.h> // udphdr
+#include <linux/tcp.h> // tcphdr
+#include <linux/icmp.h> // icmphdr
+#include <linux/icmpv6.h> // icmp6hdr
+#include <arpa/inet.h> //ntohs
+#include <linux/if_ether.h>
 using namespace polycube::service::model;
 
 class Helloworld : public HelloworldBase {
- private:
+public:
   EVP_CIPHER_CTX *ctx;
   unsigned char *key, *iv;
   const int iv_len = 12;
@@ -59,4 +62,8 @@ class Helloworld : public HelloworldBase {
  private:
   // saves the indexes in the ports maps used when action is forward
   void update_ports_map();
+  // int setup_hdr();
+  // int convert_mac(const std::string& mac_string, std::array<unsigned char, ETH_ALEN>& mac_array);
+  // uint32_t convert_ip(const std::string& ip_string);
+  // std::uint16_t checksum(std::uint16_t *buf, int size);
 };

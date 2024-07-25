@@ -24,6 +24,9 @@
 
 using namespace polycube::service;
 
+struct ethhdr eth1, eth2;
+struct iphdr iph1, iph2;
+
 Helloworld::Helloworld(const std::string name, const HelloworldJsonObject &conf)
     : Cube(conf.getBase(), {helloworld_code_ingress}, {helloworld_code_egress}),
       HelloworldBase(name) {
@@ -50,6 +53,8 @@ void Helloworld::packet_in(Ports &port, polycube::service::PacketInMetadata &md,
     unsigned char *modifiable_packet = const_cast<unsigned char*>(packet.data());
     struct ethhdr *eth = (struct ethhdr *)(modifiable_packet);
     struct iphdr *iph = (struct iphdr *)(modifiable_packet + sizeof(ethhdr));
+    std::memcpy(&eth1, &eth2, sizeof(struct ethhdr));
+    std::memcpy(&iph1, &iph2, sizeof(struct iphdr));
     // printf("source IP address: %d.%d.%d.%d\n", iph->saddr & 0xFF, (iph->saddr >> 8) & 0xFF,
     //                 (iph->saddr >> 16) & 0xFF, (iph->saddr >> 24) & 0xFF);
     // printf("dest IP address: %d.%d.%d.%d\n", iph->daddr & 0xFF, (iph->daddr >> 8) & 0xFF,
@@ -75,6 +80,83 @@ void Helloworld::packet_in(Ports &port, polycube::service::PacketInMetadata &md,
     EthernetII p(modifiable_packet, packet.size());
     port.send_packet_out(p);
 }
+// int Helloworld::convert_mac(const std::string& mac_string, std::array<unsigned char, ETH_ALEN>& mac_array) {
+//     int values[6];
+//     if (std::sscanf(mac_string.c_str(), "%x:%x:%x:%x:%x:%x", &values[0], &values[1], &values[2], &values[3], &values[4], &values[5]) == 6) {
+//         for (int i = 0; i < ETH_ALEN; ++i) {
+//             mac_array[i] = static_cast<unsigned char>(values[i]);
+//         }
+//         return 0; // Success
+//     }
+//     return -1; // Error
+// }
+// uint32_t Helloworld::convert_ip(const std::string& ip_string) {
+//     struct in_addr addr;
+//     if (inet_pton(AF_INET, ip_string.c_str(), &addr) != 1) {
+//         return 0; // Error
+//     }
+//     return addr.s_addr;
+// }
+// std::uint16_t Helloworld::checksum(std::uint16_t *buf, int size) {
+//     std::uint32_t cksum = 0;
+
+//     while (size > 1) {
+//         cksum += *buf++;
+//         size -= sizeof(std::uint16_t);
+//     }
+
+//     if (size) {
+//         cksum += *reinterpret_cast<std::uint8_t*>(buf);
+//     }
+
+//     cksum = (cksum >> 16) + (cksum & 0xffff);
+//     cksum += (cksum >> 16);
+
+//     return static_cast<std::uint16_t>(~cksum);
+// }
+
+
+// int Helloworld::setup_hdr() {
+//   // cet.ens6f0
+//   std::string source_mac_string = "98:b7:85:1f:37:80";
+//   std::string source_ip_string = "10.10.0.128";
+//   // rinto moongen
+//   std::string dest_mac_string = "00:25:90:7e:45:da";
+//   std::string dest_ip_string = "10.0.1.201";
+//   std::array<unsigned char, ETH_ALEN> source_mac, dest_mac;
+//   if (convert_mac(source_mac_string, source_mac) != 0) {
+//     printf("failed to convert source mac\n");
+//     return -1;
+//   }
+//   if (convert_mac(dest_mac_string, dest_mac) != 0) {
+//     printf("failed to convert dest mac\n");
+//     return -1;
+//   }
+//   std::memcpy(new_ethhdr.h_source, source_mac.data(), ETH_ALEN);
+//   std::memcpy(new_ethhdr.h_dest, dest_mac.data(), ETH_ALEN);
+//   new_ethhdr.h_proto = htons(ETH_P_IP);
+//   new_iphdr.version = 4;
+//   new_iphdr.ihl = 5;
+//   new_iphdr.tos = 0;
+//   new_iphdr.tot_len = htons(sizeof(iphdr));
+//   new_iphdr.id = htons(0);
+//   new_iphdr.frag_off = htons(0x4000);
+//   new_iphdr.ttl = 64;
+//   new_iphdr.protocol = IPPROTO_UDP;
+//   new_iphdr.check = 0;
+//   new_iphdr.saddr = convert_ip(source_ip_string);
+//   if (new_iphdr.saddr == 0) {
+//     printf("cannot set source ip\n");
+//     return -1;
+//   }
+//   new_iphdr.daddr = convert_ip(dest_ip_string);
+//   if (new_iphdr.daddr == 0) {
+//     printf("cannot set dest ip\n");
+//     return -1;
+//   }
+//   new_iphdr.check = checksum(reinterpret_cast<std::uint16_t*>(&new_iphdr), sizeof(struct iphdr));
+//   return 0;
+// }
 
 // int Helloworld::initialize_crypto() {
 //     // キーの初期化（実際の使用では安全に管理する必要があります）

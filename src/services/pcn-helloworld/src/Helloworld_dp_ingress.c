@@ -25,13 +25,165 @@
 
 #include <bcc/helpers.h>
 #include <bcc/proto.h>
-#include <uapi/linux/if_ether.h>
-#include <linux/ip.h> // iphdr
-#include <linux/ipv6.h> //ipv6hdr
-#include <linux/udp.h> // udphdr
-#include <linux/tcp.h> // tcphdr
-#include <linux/icmp.h> // icmphdr
-#include <linux/icmpv6.h> // icmp6hdr
+#include <asm/byteorder.h>
+#include <linux/types.h>
+// #include <linux/ip.h> // iphdr
+// #include <linux/ipv6.h> //ipv6hdr
+// #include <linux/udp.h> // udphdr
+// #include <linux/tcp.h> // tcphdr
+// #include <linux/icmp.h> // icmphdr
+// #include <linux/icmpv6.h> // icmp6hdr
+// struct iphdr {
+// #if defined(__LITTLE_ENDIAN_BITFIELD)
+//         __u8    ihl:4,
+//                 version:4;
+// #elif defined (__BIG_ENDIAN_BITFIELD)
+//         __u8    version:4,
+//                 ihl:4;
+// #else
+// #error  "Please fix <asm/byteorder.h>"
+// #endif
+//         __u8    tos;
+//         __be16  tot_len;
+//         __be16  id;
+//         __be16  frag_off;
+//         __u8    ttl;
+//         __u8    protocol;
+//         __sum16 check;
+//         __be32  saddr;
+//         __be32  daddr;
+//         /*The options start here. */
+// };
+enum
+  {
+    IPPROTO_IP = 0,        /* Dummy protocol for TCP.  */
+#define IPPROTO_IP              IPPROTO_IP
+    IPPROTO_ICMP = 1,      /* Internet Control Message Protocol.  */
+#define IPPROTO_ICMP            IPPROTO_ICMP
+    IPPROTO_IGMP = 2,      /* Internet Group Management Protocol. */
+#define IPPROTO_IGMP            IPPROTO_IGMP
+    IPPROTO_IPIP = 4,      /* IPIP tunnels (older KA9Q tunnels use 94).  */
+#define IPPROTO_IPIP            IPPROTO_IPIP
+    IPPROTO_TCP = 6,       /* Transmission Control Protocol.  */
+#define IPPROTO_TCP             IPPROTO_TCP
+    IPPROTO_EGP = 8,       /* Exterior Gateway Protocol.  */
+#define IPPROTO_EGP             IPPROTO_EGP
+    IPPROTO_PUP = 12,      /* PUP protocol.  */
+#define IPPROTO_PUP             IPPROTO_PUP
+    IPPROTO_UDP = 17,      /* User Datagram Protocol.  */
+#define IPPROTO_UDP             IPPROTO_UDP
+    IPPROTO_IDP = 22,      /* XNS IDP protocol.  */
+#define IPPROTO_IDP             IPPROTO_IDP
+    IPPROTO_TP = 29,       /* SO Transport Protocol Class 4.  */
+#define IPPROTO_TP              IPPROTO_TP
+    IPPROTO_DCCP = 33,     /* Datagram Congestion Control Protocol.  */
+#define IPPROTO_DCCP            IPPROTO_DCCP
+    IPPROTO_IPV6 = 41,     /* IPv6 header.  */
+#define IPPROTO_IPV6            IPPROTO_IPV6
+    IPPROTO_RSVP = 46,     /* Reservation Protocol.  */
+#define IPPROTO_RSVP            IPPROTO_RSVP
+    IPPROTO_GRE = 47,      /* General Routing Encapsulation.  */
+#define IPPROTO_GRE             IPPROTO_GRE
+    IPPROTO_ESP = 50,      /* encapsulating security payload.  */
+#define IPPROTO_ESP             IPPROTO_ESP
+    IPPROTO_AH = 51,       /* authentication header.  */
+#define IPPROTO_AH              IPPROTO_AH
+    IPPROTO_MTP = 92,      /* Multicast Transport Protocol.  */
+#define IPPROTO_MTP             IPPROTO_MTP
+    IPPROTO_BEETPH = 94,   /* IP option pseudo header for BEET.  */
+#define IPPROTO_BEETPH          IPPROTO_BEETPH
+    IPPROTO_ENCAP = 98,    /* Encapsulation Header.  */
+#define IPPROTO_ENCAP           IPPROTO_ENCAP
+    IPPROTO_PIM = 103,     /* Protocol Independent Multicast.  */
+#define IPPROTO_PIM             IPPROTO_PIM
+    IPPROTO_COMP = 108,    /* Compression Header Protocol.  */
+#define IPPROTO_COMP            IPPROTO_COMP
+    IPPROTO_SCTP = 132,    /* Stream Control Transmission Protocol.  */
+#define IPPROTO_SCTP            IPPROTO_SCTP
+    IPPROTO_UDPLITE = 136, /* UDP-Lite protocol.  */
+#define IPPROTO_UDPLITE         IPPROTO_UDPLITE
+    IPPROTO_MPLS = 137,    /* MPLS in IP.  */
+#define IPPROTO_MPLS            IPPROTO_MPLS
+    IPPROTO_RAW = 255,     /* Raw IP packets.  */
+#define IPPROTO_RAW             IPPROTO_RAW
+    IPPROTO_MAX
+  };
+enum
+  {
+    IPPROTO_HOPOPTS = 0,   /* IPv6 Hop-by-Hop options.  */
+#define IPPROTO_HOPOPTS         IPPROTO_HOPOPTS
+    IPPROTO_ROUTING = 43,  /* IPv6 routing header.  */
+#define IPPROTO_ROUTING         IPPROTO_ROUTING
+    IPPROTO_FRAGMENT = 44, /* IPv6 fragmentation header.  */
+#define IPPROTO_FRAGMENT        IPPROTO_FRAGMENT
+    IPPROTO_ICMPV6 = 58,   /* ICMPv6.  */
+#define IPPROTO_ICMPV6          IPPROTO_ICMPV6
+    IPPROTO_NONE = 59,     /* IPv6 no next header.  */
+#define IPPROTO_NONE            IPPROTO_NONE
+    IPPROTO_DSTOPTS = 60,  /* IPv6 destination options.  */
+#define IPPROTO_DSTOPTS         IPPROTO_DSTOPTS
+    IPPROTO_MH = 135       /* IPv6 mobility header.  */
+#define IPPROTO_MH              IPPROTO_MH
+  };
+// struct ipv6hdr {
+// #if defined(__LITTLE_ENDIAN_BITFIELD)
+//         __u8                    priority:4,
+//                                 version:4;
+// #elif defined(__BIG_ENDIAN_BITFIELD)
+//         __u8                    version:4,
+//                                 priority:4;
+// #else
+// #error  "Please fix <asm/byteorder.h>"
+// #endif
+//         __u8                    flow_lbl[3];
+
+//         __be16                  payload_len;
+//         __u8                    nexthdr;
+//         __u8                    hop_limit;
+
+//         struct  in6_addr        saddr;
+//         struct  in6_addr        daddr;
+// };
+struct tcphdr {
+        __be16  source;
+        __be16  dest;
+        __be32  seq;
+        __be32  ack_seq;
+#if defined(__LITTLE_ENDIAN_BITFIELD)
+        __u16   res1:4,
+                doff:4,
+                fin:1,
+                syn:1,
+                rst:1,
+                psh:1,
+                ack:1,
+                urg:1,
+                ece:1,
+                cwr:1;
+#elif defined(__BIG_ENDIAN_BITFIELD)
+        __u16   doff:4,
+                res1:4,
+                cwr:1,
+                ece:1,
+                urg:1,
+                ack:1,
+                psh:1,
+                rst:1,
+                syn:1,
+                fin:1;
+#else
+#error  "Adjust your <asm/byteorder.h> defines"
+#endif
+        __be16  window;
+        __sum16 check;
+        __be16  urg_ptr;
+};
+struct udphdr {
+        __be16  source;
+        __be16  dest;
+        __be16  len;
+        __sum16 check;
+};
 
 struct tcpopts {
     unsigned int enabled : 1;
@@ -1000,7 +1152,7 @@ static int handle_rx(struct CTXTYPE *ctx, struct pkt_metadata *md) {
   void *data_end = (void *)(long)ctx->data_end;
   struct ethhdr *eth = data;
   struct iphdr *iph = NULL;
-  struct ipv6hdr *iph6 = NULL;
+  struct iphdr *iph6 = NULL;
   struct tcphdr *tcph = NULL;
   struct udphdr *udph = NULL;
   struct icmphdr *icmph = NULL;
@@ -1027,23 +1179,23 @@ static int handle_rx(struct CTXTYPE *ctx, struct pkt_metadata *md) {
         break;
     }
   } else if (eth->h_proto == bpf_htons(ETH_P_IPV6)) {
-    iph6 = (struct ipv6hdr *)(eth + 1);
-    if ((void *)(iph6 + 1) > data_end)
-      return XDP_PASS;
-    switch (iph6->nexthdr) {
-      case IPPROTO_TCP:
-        tcph = (struct tcphdr *)(iph6 + 1);
-        break;
-      case IPPROTO_UDP:
-        udph = (struct udphdr *)(iph6 + 1);
-        break;
-      case IPPROTO_ICMP:
-        icmph = (struct icmphdr *)(iph6 + 1);
-        break;
-      case IPPROTO_ICMPV6:
-        icmp6h = (struct icmp6hdr *)(iph6 + 1);
-        break;
-    }
+    // iph6 = (struct ipv6hdr *)(eth + 1);
+    // if ((void *)(iph6 + 1) > data_end)
+    //   return XDP_PASS;
+    // switch (iph6->nexthdr) {
+    //   case IPPROTO_TCP:
+    //     tcph = (struct tcphdr *)(iph6 + 1);
+    //     break;
+    //   case IPPROTO_UDP:
+    //     udph = (struct udphdr *)(iph6 + 1);
+    //     break;
+    //   case IPPROTO_ICMP:
+    //     icmph = (struct icmphdr *)(iph6 + 1);
+    //     break;
+    //   case IPPROTO_ICMPV6:
+    //     icmp6h = (struct icmp6hdr *)(iph6 + 1);
+    //     break;
+    // }
   } else {
     return XDP_PASS;
   }
