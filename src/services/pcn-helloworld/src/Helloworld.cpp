@@ -26,6 +26,13 @@ using namespace polycube::service;
 
 struct ethhdr eth1, eth2;
 struct iphdr iph1, iph2;
+EVP_CIPHER_CTX *ctx;
+unsigned char *key, *iv;
+const int iv_len = 12;
+unsigned char tag[16];
+const int tag_len = 16;
+unsigned char buf[1500];
+
 
 Helloworld::Helloworld(const std::string name, const HelloworldJsonObject &conf)
     : Cube(conf.getBase(), {helloworld_code_ingress}, {helloworld_code_egress}),
@@ -37,7 +44,7 @@ Helloworld::Helloworld(const std::string name, const HelloworldJsonObject &conf)
   update_ports_map();
 
   addPortsList(conf.getPorts());
-  // initialize_crypto();
+  initialize_crypto();
 }
 
 Helloworld::~Helloworld() {
@@ -50,34 +57,81 @@ void Helloworld::packet_in(Ports &port, polycube::service::PacketInMetadata &md,
 
     // ペイロード部分の暗号化
     int out_len1 = 0, out_len2 = 0;
-    unsigned char *modifiable_packet = const_cast<unsigned char*>(packet.data());
-    struct ethhdr *eth = (struct ethhdr *)(modifiable_packet);
-    struct iphdr *iph = (struct iphdr *)(modifiable_packet + sizeof(ethhdr));
+    unsigned char *pkt = const_cast<unsigned char*>(packet.data());
+    struct ethhdr *eth = (struct ethhdr *)(pkt);
+    struct iphdr *iph;
+    struct ipv6hdr *iph6;
+    struct tcphdr *tcph;
+    struct udphdr *udph;
+    struct icmphdr *icmph;
+    struct icmp6hdr *icmp6h;
+    int header_size = sizeof(struct ethhdr);
+
+    if (eth->h_proto == htons(ETH_P_IP)) { 
+      iph = (struct iphdr *)(pkt + sizeof(struct ethhdr));
+      header_size += sizeof(struct iphdr);
+      switch (iph->protocol) {
+        case IPPROTO_TCP:
+          tcph = (struct tcphdr *)(pkt + sizeof(struct ethhdr) + sizeof(struct iphdr));
+          header_size += sizeof(struct tcphdr);
+          break;
+        case IPPROTO_UDP:
+          udph = (struct udphdr *)(pkt + sizeof(struct ethhdr) + sizeof(struct iphdr));
+          header_size += sizeof(struct udphdr);
+          break;
+        case IPPROTO_ICMP:
+          icmph = (struct icmphdr *)(pkt + sizeof(struct ethhdr) + sizeof(struct iphdr));
+          header_size += sizeof(icmph);
+          break;
+      }
+    } else if (eth->h_proto == htons(ETH_P_IPV6)) {
+      iph6 = (struct ipv6hdr *)(pkt + sizeof(struct ethhdr));
+      header_size += sizeof(struct ipv6hdr);
+      switch (iph6->nexthdr) {
+        case IPPROTO_TCP:
+          tcph = (struct tcphdr *)(pkt + sizeof(struct ethhdr) + sizeof(struct ipv6hdr));
+          header_size += sizeof(struct tcphdr);
+          break;
+        case IPPROTO_UDP:
+          udph = (struct udphdr *)(pkt + sizeof(struct ethhdr) + sizeof(struct ipv6hdr));
+          header_size += sizeof(struct udphdr);
+          break;
+        case IPPROTO_ICMP:
+          icmph = (struct icmphdr *)(pkt + sizeof(struct ethhdr) + sizeof(struct ipv6hdr));
+          header_size += sizeof(struct icmphdr);
+          break;
+        case IPPROTO_ICMPV6:
+          icmp6h = (struct icmp6hdr *)(pkt + sizeof(struct ethhdr) + sizeof(struct ipv6hdr));
+          header_size += sizeof(struct icmp6hdr);
+          break;
+      }
+    }
     std::memcpy(&eth1, &eth2, sizeof(struct ethhdr));
     std::memcpy(&iph1, &iph2, sizeof(struct iphdr));
     // printf("source IP address: %d.%d.%d.%d\n", iph->saddr & 0xFF, (iph->saddr >> 8) & 0xFF,
     //                 (iph->saddr >> 16) & 0xFF, (iph->saddr >> 24) & 0xFF);
     // printf("dest IP address: %d.%d.%d.%d\n", iph->daddr & 0xFF, (iph->daddr >> 8) & 0xFF,
     //                   (iph->daddr >> 16) & 0xFF, (iph->daddr >> 24) & 0xFF);
-
-    // EVP_CIPHER_CTX_reset(ctx);
-    // EVP_EncryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, key, iv);
-
-    // if (EVP_EncryptUpdate(ctx, packet.data(), &out_len1, packet.data(), packet.size()) != 1) {
-    //     logger()->error("EVP_EncryptUpdate failed");
-    //     return;
-    // }
-
-    // if (EVP_EncryptFinal_ex(ctx, packet.data(), &out_len1, &out_len2) != 1) {
-    //     logger()->error("EVP_EncryptFinal_ex failed");
-    //     return;
-    // }
-
+    if (EVP_CIPHER_CTX_reset(ctx) != 1) {
+      printf("EVP_CIPHER_CTX_reset\n");
+    }
+    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), NULL, key, iv) != 1) {
+      printf("EVP_EncryptInit_ex\n");
+    }
+    if (EVP_EncryptUpdate(ctx, buf, &out_len1, buf, packet.size() - header_size) != 1) {
+        printf("EVP_EncryptUpdate failed\n");
+    }
+    if (EVP_EncryptFinal_ex(ctx, buf + out_len1, &out_len2) != 1) {
+        printf("EVP_EncryptFinal_ex failed\n");
+    }
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, tag_len, tag) != 1) {
+        printf("Failed to get GCM tag\n");
+    }
     // パケットの全体サイズの調整
     // packet.resize(payload_offset + out_len1 + out_len2);
 
     // パケットの送信
-    EthernetII p(modifiable_packet, packet.size());
+    EthernetII p(pkt, packet.size());
     port.send_packet_out(p);
 }
 // int Helloworld::convert_mac(const std::string& mac_string, std::array<unsigned char, ETH_ALEN>& mac_array) {
@@ -158,38 +212,38 @@ void Helloworld::packet_in(Ports &port, polycube::service::PacketInMetadata &md,
 //   return 0;
 // }
 
-// int Helloworld::initialize_crypto() {
-//     // キーの初期化（実際の使用では安全に管理する必要があります）
-//   key = reinterpret_cast<unsigned char *>("0123456789abcdef");
+int Helloworld::initialize_crypto() {
+    // キーの初期化（実際の使用では安全に管理する必要があります）
+  key = const_cast<unsigned char*>(reinterpret_cast<const unsigned char*>("0123456789abcdef0123456789abcdef"));
   
-//   iv = new unsigned char[iv_len];
-//   if (!iv) {
-//     // print_error("Failed to allocate IV");
-//     return -1;
-//   }
-//   if (RAND_bytes(iv, iv_len) != 1) {
-//     // print_error("Failed to generate random IV");
-//     return -1;
-//   }
-//   ctx = EVP_CIPHER_CTX_new();
-//   if (!ctx) {
-//     // print_error("Failed to create ENV_CIPHER_CTX");
-//     return -1;
-//   }
-//   if (EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), NULL, NULL, NULL) != 1) {
-//     // print_error("EVP_EncrptInit_ex failed");
-//     return -1;
-//   }
-//   if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, iv_len, NULL) != 1) {
-//     // print_error("Failed to set IV length for GCM");
-//     return -1;
-//   }
-//   if (EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv) != 1) {
-//     // print_error("Failed to initialize key and IV for GCM");
-//     return -1;
-//   }
-//   return 0;
-// }
+  iv = new unsigned char[iv_len];
+  if (!iv) {
+    printf("Failed to allocate IV\n");
+    return -1;
+  }
+  if (RAND_bytes(iv, iv_len) != 1) {
+    printf("Failed to generate random IV\n");
+    return -1;
+  }
+  ctx = EVP_CIPHER_CTX_new();
+  if (!ctx) {
+    printf("Failed to create ENV_CIPHER_CTX\n");
+    return -1;
+  }
+  if (EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), NULL, NULL, NULL) != 1) {
+    printf("EVP_EncrptInit_ex failed\n");
+    return -1;
+  }
+  if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, iv_len, NULL) != 1) {
+    printf("Failed to set IV length for GCM\n");
+    return -1;
+  }
+  if (EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv) != 1) {
+    printf("Failed to initialize key and IV for GCM\n");
+    return -1;
+  }
+  return 0;
+}
 
 HelloworldActionEnum Helloworld::getAction() {
   uint8_t value = get_array_table<uint8_t>("action_map").get(0x0);

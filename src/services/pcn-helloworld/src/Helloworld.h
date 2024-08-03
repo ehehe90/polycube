@@ -30,16 +30,10 @@
 #include <linux/icmpv6.h> // icmp6hdr
 #include <arpa/inet.h> //ntohs
 #include <linux/if_ether.h>
+#include <openssl/rand.h>
 using namespace polycube::service::model;
 
 class Helloworld : public HelloworldBase {
-public:
-  EVP_CIPHER_CTX *ctx;
-  unsigned char *key, *iv;
-  const int iv_len = 12;
-  unsigned char tag[16];
-  const int tag_len = 16;
-
  public:
   Helloworld(const std::string name, const HelloworldJsonObject &conf);
   virtual ~Helloworld();
@@ -58,7 +52,6 @@ public:
   /// </summary>
   HelloworldActionEnum getAction() override;
   void setAction(const HelloworldActionEnum &value) override;
-  // int initialize_crypto();
  private:
   // saves the indexes in the ports maps used when action is forward
   void update_ports_map();
@@ -66,4 +59,5 @@ public:
   // int convert_mac(const std::string& mac_string, std::array<unsigned char, ETH_ALEN>& mac_array);
   // uint32_t convert_ip(const std::string& ip_string);
   // std::uint16_t checksum(std::uint16_t *buf, int size);
+  int initialize_crypto();
 };
