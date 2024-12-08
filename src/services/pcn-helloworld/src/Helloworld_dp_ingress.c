@@ -125,25 +125,39 @@ enum
     IPPROTO_MH = 135       /* IPv6 mobility header.  */
 #define IPPROTO_MH              IPPROTO_MH
   };
-// struct ipv6hdr {
-// #if defined(__LITTLE_ENDIAN_BITFIELD)
-//         __u8                    priority:4,
-//                                 version:4;
-// #elif defined(__BIG_ENDIAN_BITFIELD)
-//         __u8                    version:4,
-//                                 priority:4;
-// #else
-// #error  "Please fix <asm/byteorder.h>"
-// #endif
-//         __u8                    flow_lbl[3];
+struct in6_addr {
+	union {
+		__u8		u6_addr8[16];
+#if __UAPI_DEF_IN6_ADDR_ALT
+		__be16		u6_addr16[8];
+		__be32		u6_addr32[4];
+#endif
+	} in6_u;
+#define s6_addr			in6_u.u6_addr8
+#if __UAPI_DEF_IN6_ADDR_ALT
+#define s6_addr16		in6_u.u6_addr16
+#define s6_addr32		in6_u.u6_addr32
+#endif
+};
+struct ipv6hdr {
+#if defined(__LITTLE_ENDIAN_BITFIELD)
+        __u8                    priority:4,
+                                version:4;
+#elif defined(__BIG_ENDIAN_BITFIELD)
+        __u8                    version:4,
+                                priority:4;
+#else
+#error  "Please fix <asm/byteorder.h>"
+#endif
+        __u8                    flow_lbl[3];
 
-//         __be16                  payload_len;
-//         __u8                    nexthdr;
-//         __u8                    hop_limit;
+        __be16                  payload_len;
+        __u8                    nexthdr;
+        __u8                    hop_limit;
 
-//         struct  in6_addr        saddr;
-//         struct  in6_addr        daddr;
-// };
+        struct  in6_addr        saddr;
+        struct  in6_addr        daddr;
+};
 struct tcphdr {
         __be16  source;
         __be16  dest;
@@ -271,10 +285,9 @@ struct filter {
   struct icmpopts icmpopts;
 };
 
-struct filter filters[16] = {
-    {
+static struct filter filter = {
         .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
+        .ip_daddr = 0x81000A0A, // 10.10.0.128
         .check_tos = 1,
         .tos = 0,
         .check_min_ttl = 1,
@@ -322,773 +335,7 @@ struct filter filters[16] = {
             .check_type = 1,
             .type = 8,
         }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 320,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-    {
-        .ip_saddr = 0xC9010A0A, // 10.10.1.201
-        .ip_daddr = 0x6D000A0A, // 10.10.0.109
-        .check_tos = 1,
-        .tos = 0,
-        .check_min_ttl = 1,
-        .min_ttl = 40,
-        .check_max_ttl = 1,
-        .max_ttl = 80,
-        .check_min_len = 1,
-        .min_len = 30,
-        .check_max_len = 1,
-        .max_len = 50,
-        .tcpopts = {
-            .enabled = 0,
-            .check_sport = 1,
-            .sport = 80,
-            .check_dport = 1,
-            .dport = 8080,
-            .check_urg = 0,
-            .urg = 0,
-            .check_ack = 1,
-            .ack = 1,
-            .check_rst = 0,
-            .rst = 0,
-            .check_psh = 0,
-            .psh = 0,
-            .check_syn = 1,
-            .syn = 1,
-            .check_fin = 0,
-            .fin = 0,
-            .check_ece = 0,
-            .ece = 0,
-            .check_cwr = 0,
-            .cwr = 0,
-        },
-        .udpopts = {
-            .enabled = 1,
-            .check_sport = 1,
-            .sport = 1234,
-            .check_dport = 1,
-            .dport = 319,
-        },
-        .icmpopts = {
-            .enabled = 0,
-            .check_code = 1,
-            .code = 0,
-            .check_type = 1,
-            .type = 8,
-        }
-    },
-};
+    };
 
 const uint16_t UINT16_MAX = 0xffff;
 
@@ -1152,7 +399,7 @@ static int handle_rx(struct CTXTYPE *ctx, struct pkt_metadata *md) {
   void *data_end = (void *)(long)ctx->data_end;
   struct ethhdr *eth = data;
   struct iphdr *iph = NULL;
-  struct iphdr *iph6 = NULL;
+  struct ipv6hdr *iph6 = NULL;
   struct tcphdr *tcph = NULL;
   struct udphdr *udph = NULL;
   struct icmphdr *icmph = NULL;
@@ -1170,6 +417,8 @@ static int handle_rx(struct CTXTYPE *ctx, struct pkt_metadata *md) {
         break;
       case IPPROTO_UDP:
         udph = (struct udphdr *)(iph + 1);
+        if ((void *)(udph + 1) > data_end)
+          return XDP_PASS;
         break;
       case IPPROTO_ICMP:
         icmph = (struct icmphdr *)(iph + 1);
@@ -1179,78 +428,52 @@ static int handle_rx(struct CTXTYPE *ctx, struct pkt_metadata *md) {
         break;
     }
   } else if (eth->h_proto == bpf_htons(ETH_P_IPV6)) {
-    // iph6 = (struct ipv6hdr *)(eth + 1);
-    // if ((void *)(iph6 + 1) > data_end)
-    //   return XDP_PASS;
-    // switch (iph6->nexthdr) {
-    //   case IPPROTO_TCP:
-    //     tcph = (struct tcphdr *)(iph6 + 1);
-    //     break;
-    //   case IPPROTO_UDP:
-    //     udph = (struct udphdr *)(iph6 + 1);
-    //     break;
-    //   case IPPROTO_ICMP:
-    //     icmph = (struct icmphdr *)(iph6 + 1);
-    //     break;
-    //   case IPPROTO_ICMPV6:
-    //     icmp6h = (struct icmp6hdr *)(iph6 + 1);
-    //     break;
-    // }
+    iph6 = (struct ipv6hdr *)(eth + 1);
+    if ((void *)(iph6 + 1) > data_end)
+      return XDP_PASS;
+    switch (iph6->nexthdr) {
+      case IPPROTO_TCP:
+        tcph = (struct tcphdr *)(iph6 + 1);
+        break;
+      case IPPROTO_UDP:
+        udph = (struct udphdr *)(iph6 + 1);
+        break;
+      case IPPROTO_ICMP:
+        icmph = (struct icmphdr *)(iph6 + 1);
+        break;
+      case IPPROTO_ICMPV6:
+        icmp6h = (struct icmp6hdr *)(iph6 + 1);
+        break;
+    }
   } else {
     return XDP_PASS;
   }
 
-  for (int i = 0; i < 16; i++) {
-    filter = filters[2];
+  for (int i = 0; i < 32; i++) {
     if (iph != NULL) {
       if (filter.ip_saddr && iph->saddr != filter.ip_saddr) //TODO エンディアン?
         continue;
       if (filter.ip_daddr && iph->daddr != filter.ip_daddr)
         continue;
       // TODO ALLOWSINGLEIPV4V6 への対応
-      if (filter.check_tos && iph->tos != filter.tos)
-        continue;
-      if (filter.check_min_ttl && iph->ttl < filter.min_ttl)
-        continue;
-      if (filter.check_max_ttl && iph->ttl > filter.max_ttl)
-        continue;
-      if (filter.check_min_len && bpf_ntohs(iph->tot_len) < filter.min_len)
-        continue;
-      if (filter.check_max_len && bpf_ntohs(iph->tot_len) > filter.max_len)
-        continue;
+      // if (filter.check_tos && iph->tos != filter.tos)
+      //   continue;
+      // if (filter.check_min_ttl && iph->ttl < filter.min_ttl)
+      //   continue;
+      // if (filter.check_max_ttl && iph->ttl > filter.max_ttl)
+      //   continue;
+      // if (filter.check_min_len && bpf_ntohs(iph->tot_len) < filter.min_len)
+      //   continue;
+      // if (filter.check_max_len && bpf_ntohs(iph->tot_len) > filter.max_len)
+      //   continue;
     } else if (iph6 != NULL) {
-      ;
+      continue;
     }
     if (filter.tcpopts.enabled) {
-      if ((void *)(tcph + 1) > data_end)
-        return XDP_PASS;
-      if (tcph == NULL) 
-        continue;
-      // if (filter.tcpopts.check_sport && bpf_htons(filter.tcpopts.sport) != tcph->source)
-      //   continue;
-      // if (filter.tcpopts.check_dport && bpf_htons(filter.tcpopts.dport) != tcph->dest)
-      //   continue;
-      // if (filter.tcpopts.check_urg && filter.tcpopts.urg != tcph->urg)
-      //   continue;
-      // if (filter.tcpopts.check_ack && filter.tcpopts.ack != tcph->ack)
-      //   continue;
-      // if (filter.tcpopts.check_rst && filter.tcpopts.rst != tcph->rst)
-      //   continue;
-      // if (filter.tcpopts.check_psh && filter.tcpopts.psh != tcph->psh)
-      //   continue;
-      // if (filter.tcpopts.check_syn && filter.tcpopts.syn != tcph->syn)
-      //   continue;
-      // if (filter.tcpopts.check_fin && filter.tcpopts.fin != tcph->fin)
-      //   continue;
-      // if (filter.tcpopts.check_ece && filter.tcpopts.ece != tcph->ece)
-      //   continue;
-      // if (filter.tcpopts.check_cwr && filter.tcpopts.cwr != tcph->cwr)
-      //   continue;
+      continue;
     } else if (filter.udpopts.enabled) {
       if (udph == NULL)
         continue;
-      if ((void *)(udph + 1) > data_end)
-        return XDP_PASS;
       if (filter.udpopts.check_sport && bpf_htons(filter.udpopts.sport) != udph->source)
         continue;
       if (filter.udpopts.check_dport && bpf_htons(filter.udpopts.dport) != udph->dest)
@@ -1258,25 +481,16 @@ static int handle_rx(struct CTXTYPE *ctx, struct pkt_metadata *md) {
     } else if (filter.icmpopts.enabled) {
       if (icmph != NULL) {
         continue;
-        // if (filter.icmpopts.check_code && filter.icmpopts.code != icmph->code)
-        //   continue;
-        // if (filter.icmpopts.check_type && filter.icmpopts.type != icmph->type)
-        //   continue;
       } else if (icmp6h != NULL) {
         continue;
-        // if (filter.icmpopts.check_code && filter.icmpopts.code != icmp6h->icmp6_code)
-        //   continue;
-        // if (filter.icmpopts.check_type && filter.icmpopts.type != icmp6h->icmp6_type)
-        //   continue;
       } else {
         continue;
       }
     } else {
       continue;
     }
-    return XDP_DROP;
   }
-  swap_src_dst_mac(data);
+//   swap_src_dst_mac(data);
   pcn_log(ctx, LOG_DEBUG, "Sending packet to slow path");
   pcn_pkt_controller(ctx, md, SLOWPATH_REASON);
   return RX_DROP;

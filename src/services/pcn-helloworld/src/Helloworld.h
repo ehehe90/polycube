@@ -16,10 +16,6 @@
 
 #pragma once
 
-#include "../base/HelloworldBase.h"
-
-#include "Ports.h"
-
 #include <tins/ethernetII.h>
 #include <openssl/evp.h>
 #include <linux/ip.h> // iphdr
@@ -29,8 +25,12 @@
 #include <linux/icmp.h> // icmphdr
 #include <linux/icmpv6.h> // icmp6hdr
 #include <arpa/inet.h> //ntohs
-#include <linux/if_ether.h>
-#include <openssl/rand.h>
+#include <net/ethernet.h>
+
+#include "../base/HelloworldBase.h"
+
+#include "Ports.h"
+
 using namespace polycube::service::model;
 
 class Helloworld : public HelloworldBase {
@@ -55,9 +55,6 @@ class Helloworld : public HelloworldBase {
  private:
   // saves the indexes in the ports maps used when action is forward
   void update_ports_map();
-  // int setup_hdr();
-  // int convert_mac(const std::string& mac_string, std::array<unsigned char, ETH_ALEN>& mac_array);
-  // uint32_t convert_ip(const std::string& ip_string);
-  // std::uint16_t checksum(std::uint16_t *buf, int size);
-  int initialize_crypto();
+  void swap_mac_addresses(void *pkt);
+  int setup_rule();
 };

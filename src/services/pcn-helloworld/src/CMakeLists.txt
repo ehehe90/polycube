@@ -16,6 +16,8 @@ endif(POLYCUBE_STANDALONE_SERVICE)
 
 # Needed to load files as variables
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories("/home/ehehe/NFC2024/tools/nDPI/src/include")
+link_directories("/home/ehehe/NFC2024/tools/nDPI/src/lib")
 
 add_library(pcn-helloworld SHARED
   ${SERIALIZER_SOURCES}
@@ -32,7 +34,7 @@ load_file_as_variable(pcn-helloworld Helloworld_dp_egress.c helloworld_code_egre
 # load datamodel in a variable
 load_file_as_variable(pcn-helloworld ../datamodel/helloworld.yang helloworld_datamodel)
 
-target_link_libraries(pcn-helloworld ${POLYCUBE_LIBRARIES})
+target_link_libraries(pcn-helloworld ${POLYCUBE_LIBRARIES} ndpi)
 
 # Specify shared library install directory
 

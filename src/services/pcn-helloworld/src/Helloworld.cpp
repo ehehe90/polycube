@@ -22,16 +22,11 @@
 #include "Helloworld_dp_egress.h"
 #include "Helloworld_dp_ingress.h"
 
+#include "ndpi_api.h"
+
 using namespace polycube::service;
 
-struct ethhdr eth1, eth2;
-struct iphdr iph1, iph2;
-EVP_CIPHER_CTX *ctx;
-unsigned char *key, *iv;
-const int iv_len = 12;
-unsigned char tag[16];
-const int tag_len = 16;
-unsigned char buf[1500];
+void *automa;
 
 
 Helloworld::Helloworld(const std::string name, const HelloworldJsonObject &conf)
@@ -44,7 +39,7 @@ Helloworld::Helloworld(const std::string name, const HelloworldJsonObject &conf)
   update_ports_map();
 
   addPortsList(conf.getPorts());
-  initialize_crypto();
+  setup_rule();
 }
 
 Helloworld::~Helloworld() {
@@ -106,143 +101,68 @@ void Helloworld::packet_in(Ports &port, polycube::service::PacketInMetadata &md,
           break;
       }
     }
-    std::memcpy(&eth1, &eth2, sizeof(struct ethhdr));
-    std::memcpy(&iph1, &iph2, sizeof(struct iphdr));
-    // printf("source IP address: %d.%d.%d.%d\n", iph->saddr & 0xFF, (iph->saddr >> 8) & 0xFF,
-    //                 (iph->saddr >> 16) & 0xFF, (iph->saddr >> 24) & 0xFF);
-    // printf("dest IP address: %d.%d.%d.%d\n", iph->daddr & 0xFF, (iph->daddr >> 8) & 0xFF,
-    //                   (iph->daddr >> 16) & 0xFF, (iph->daddr >> 24) & 0xFF);
-    if (EVP_CIPHER_CTX_reset(ctx) != 1) {
-      printf("EVP_CIPHER_CTX_reset\n");
-    }
-    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), NULL, key, iv) != 1) {
-      printf("EVP_EncryptInit_ex\n");
-    }
-    if (EVP_EncryptUpdate(ctx, buf, &out_len1, buf, packet.size() - header_size) != 1) {
-        printf("EVP_EncryptUpdate failed\n");
-    }
-    if (EVP_EncryptFinal_ex(ctx, buf + out_len1, &out_len2) != 1) {
-        printf("EVP_EncryptFinal_ex failed\n");
-    }
-    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, tag_len, tag) != 1) {
-        printf("Failed to get GCM tag\n");
-    }
-    // パケットの全体サイズの調整
-    // packet.resize(payload_offset + out_len1 + out_len2);
+    char *payload = (char *)pkt + header_size;
+    *(char *)(pkt + packet.size()) = '\0';
+
+    ndpi_match_string(automa, payload);
+    swap_mac_addresses(pkt);
 
     // パケットの送信
     EthernetII p(pkt, packet.size());
     port.send_packet_out(p);
 }
-// int Helloworld::convert_mac(const std::string& mac_string, std::array<unsigned char, ETH_ALEN>& mac_array) {
-//     int values[6];
-//     if (std::sscanf(mac_string.c_str(), "%x:%x:%x:%x:%x:%x", &values[0], &values[1], &values[2], &values[3], &values[4], &values[5]) == 6) {
-//         for (int i = 0; i < ETH_ALEN; ++i) {
-//             mac_array[i] = static_cast<unsigned char>(values[i]);
-//         }
-//         return 0; // Success
-//     }
-//     return -1; // Error
-// }
-// uint32_t Helloworld::convert_ip(const std::string& ip_string) {
-//     struct in_addr addr;
-//     if (inet_pton(AF_INET, ip_string.c_str(), &addr) != 1) {
-//         return 0; // Error
-//     }
-//     return addr.s_addr;
-// }
-// std::uint16_t Helloworld::checksum(std::uint16_t *buf, int size) {
-//     std::uint32_t cksum = 0;
 
-//     while (size > 1) {
-//         cksum += *buf++;
-//         size -= sizeof(std::uint16_t);
-//     }
+void Helloworld::swap_mac_addresses(void *pkt) {
+  struct ether_header *eth = (struct ether_header *)pkt;
+  struct ether_addr *src_addr = (struct ether_addr *)&eth->ether_shost;
+  struct ether_addr *dst_addr = (struct ether_addr *)&eth->ether_dhost;
+  struct ether_addr tmp;
 
-//     if (size) {
-//         cksum += *reinterpret_cast<std::uint8_t*>(buf);
-//     }
+  tmp = *src_addr;
+  *src_addr = *dst_addr;
+  *dst_addr = tmp;
+}
 
-//     cksum = (cksum >> 16) + (cksum & 0xffff);
-//     cksum += (cksum >> 16);
+int Helloworld::setup_rule()
+{
+    long long int match_total = 0;
+    int ret;
+    char line[1024];
+    FILE *file;
 
-//     return static_cast<std::uint16_t>(~cksum);
-// }
+    if ((automa = ndpi_init_automa()) == NULL) {
+      printf("Failed to ndpi_init_automa");
+      return -1;
+    }
 
+    file = fopen("/home/ehehe/NFC2024/data/daemon/NF_pool/u_dpi/rules.txt", "r");
+    if (file == NULL) {
+        printf("Failed to open rules.txt");
+        return -1;
+    }
 
-// int Helloworld::setup_hdr() {
-//   // cet.ens6f0
-//   std::string source_mac_string = "98:b7:85:1f:37:80";
-//   std::string source_ip_string = "10.10.0.128";
-//   // rinto moongen
-//   std::string dest_mac_string = "00:25:90:7e:45:da";
-//   std::string dest_ip_string = "10.0.1.201";
-//   std::array<unsigned char, ETH_ALEN> source_mac, dest_mac;
-//   if (convert_mac(source_mac_string, source_mac) != 0) {
-//     printf("failed to convert source mac\n");
-//     return -1;
-//   }
-//   if (convert_mac(dest_mac_string, dest_mac) != 0) {
-//     printf("failed to convert dest mac\n");
-//     return -1;
-//   }
-//   std::memcpy(new_ethhdr.h_source, source_mac.data(), ETH_ALEN);
-//   std::memcpy(new_ethhdr.h_dest, dest_mac.data(), ETH_ALEN);
-//   new_ethhdr.h_proto = htons(ETH_P_IP);
-//   new_iphdr.version = 4;
-//   new_iphdr.ihl = 5;
-//   new_iphdr.tos = 0;
-//   new_iphdr.tot_len = htons(sizeof(iphdr));
-//   new_iphdr.id = htons(0);
-//   new_iphdr.frag_off = htons(0x4000);
-//   new_iphdr.ttl = 64;
-//   new_iphdr.protocol = IPPROTO_UDP;
-//   new_iphdr.check = 0;
-//   new_iphdr.saddr = convert_ip(source_ip_string);
-//   if (new_iphdr.saddr == 0) {
-//     printf("cannot set source ip\n");
-//     return -1;
-//   }
-//   new_iphdr.daddr = convert_ip(dest_ip_string);
-//   if (new_iphdr.daddr == 0) {
-//     printf("cannot set dest ip\n");
-//     return -1;
-//   }
-//   new_iphdr.check = checksum(reinterpret_cast<std::uint16_t*>(&new_iphdr), sizeof(struct iphdr));
-//   return 0;
-// }
+    while (fgets(line, sizeof(line), file)) {
+        // 改行文字を削除
+        line[strcspn(line, "\n")] = 0;
+        
+        // 空行をスキップ
+        if (strlen(line) == 0) {
+            continue;
+        }
 
-int Helloworld::initialize_crypto() {
-    // キーの初期化（実際の使用では安全に管理する必要があります）
-  key = const_cast<unsigned char*>(reinterpret_cast<const unsigned char*>("0123456789abcdef0123456789abcdef"));
-  
-  iv = new unsigned char[iv_len];
-  if (!iv) {
-    printf("Failed to allocate IV\n");
-    return -1;
-  }
-  if (RAND_bytes(iv, iv_len) != 1) {
-    printf("Failed to generate random IV\n");
-    return -1;
-  }
-  ctx = EVP_CIPHER_CTX_new();
-  if (!ctx) {
-    printf("Failed to create ENV_CIPHER_CTX\n");
-    return -1;
-  }
-  if (EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), NULL, NULL, NULL) != 1) {
-    printf("EVP_EncrptInit_ex failed\n");
-    return -1;
-  }
-  if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, iv_len, NULL) != 1) {
-    printf("Failed to set IV length for GCM\n");
-    return -1;
-  }
-  if (EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv) != 1) {
-    printf("Failed to initialize key and IV for GCM\n");
-    return -1;
-  }
-  return 0;
+        ret = ndpi_add_string_to_automa(automa, ndpi_strdup(line));
+        if (ret < 0) {
+            printf("Failed to ndpi_add_string_to_automa(%s)", line);
+        }
+        match_total++;
+    }
+
+    fclose(file);
+
+    ndpi_finalize_automa(automa);
+
+    printf("Total %lld patterns added\n", match_total);
+    return 0;
 }
 
 HelloworldActionEnum Helloworld::getAction() {
