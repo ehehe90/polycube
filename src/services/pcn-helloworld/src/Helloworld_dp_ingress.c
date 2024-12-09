@@ -407,89 +407,89 @@ static int handle_rx(struct CTXTYPE *ctx, struct pkt_metadata *md) {
   struct filter filter;
   if ((void *)(eth + 1) > data_end)
     return XDP_PASS;
-  if (eth->h_proto == bpf_htons(ETH_P_IP)) {
-    iph = (struct iphdr *)(eth + 1);
-    if ((void *)(iph + 1) > data_end)
-      return XDP_PASS;
-    switch (iph->protocol) {
-      case IPPROTO_TCP:
-        tcph = (struct tcphdr *)(iph + 1);
-        break;
-      case IPPROTO_UDP:
-        udph = (struct udphdr *)(iph + 1);
-        if ((void *)(udph + 1) > data_end)
-          return XDP_PASS;
-        break;
-      case IPPROTO_ICMP:
-        icmph = (struct icmphdr *)(iph + 1);
-        break;
-      case IPPROTO_ICMPV6:
-        icmp6h = (struct icmp6hdr *)(iph + 1);
-        break;
-    }
-  } else if (eth->h_proto == bpf_htons(ETH_P_IPV6)) {
-    iph6 = (struct ipv6hdr *)(eth + 1);
-    if ((void *)(iph6 + 1) > data_end)
-      return XDP_PASS;
-    switch (iph6->nexthdr) {
-      case IPPROTO_TCP:
-        tcph = (struct tcphdr *)(iph6 + 1);
-        break;
-      case IPPROTO_UDP:
-        udph = (struct udphdr *)(iph6 + 1);
-        break;
-      case IPPROTO_ICMP:
-        icmph = (struct icmphdr *)(iph6 + 1);
-        break;
-      case IPPROTO_ICMPV6:
-        icmp6h = (struct icmp6hdr *)(iph6 + 1);
-        break;
-    }
-  } else {
-    return XDP_PASS;
-  }
+//   if (eth->h_proto == bpf_htons(ETH_P_IP)) {
+//     iph = (struct iphdr *)(eth + 1);
+//     if ((void *)(iph + 1) > data_end)
+//       return XDP_PASS;
+//     switch (iph->protocol) {
+//       case IPPROTO_TCP:
+//         tcph = (struct tcphdr *)(iph + 1);
+//         break;
+//       case IPPROTO_UDP:
+//         udph = (struct udphdr *)(iph + 1);
+//         if ((void *)(udph + 1) > data_end)
+//           return XDP_PASS;
+//         break;
+//       case IPPROTO_ICMP:
+//         icmph = (struct icmphdr *)(iph + 1);
+//         break;
+//       case IPPROTO_ICMPV6:
+//         icmp6h = (struct icmp6hdr *)(iph + 1);
+//         break;
+//     }
+//   } else if (eth->h_proto == bpf_htons(ETH_P_IPV6)) {
+//     iph6 = (struct ipv6hdr *)(eth + 1);
+//     if ((void *)(iph6 + 1) > data_end)
+//       return XDP_PASS;
+//     switch (iph6->nexthdr) {
+//       case IPPROTO_TCP:
+//         tcph = (struct tcphdr *)(iph6 + 1);
+//         break;
+//       case IPPROTO_UDP:
+//         udph = (struct udphdr *)(iph6 + 1);
+//         break;
+//       case IPPROTO_ICMP:
+//         icmph = (struct icmphdr *)(iph6 + 1);
+//         break;
+//       case IPPROTO_ICMPV6:
+//         icmp6h = (struct icmp6hdr *)(iph6 + 1);
+//         break;
+//     }
+//   } else {
+//     return XDP_PASS;
+//   }
 
-  for (int i = 0; i < 32; i++) {
-    if (iph != NULL) {
-      if (filter.ip_saddr && iph->saddr != filter.ip_saddr) //TODO エンディアン?
-        continue;
-      if (filter.ip_daddr && iph->daddr != filter.ip_daddr)
-        continue;
-      // TODO ALLOWSINGLEIPV4V6 への対応
-      // if (filter.check_tos && iph->tos != filter.tos)
-      //   continue;
-      // if (filter.check_min_ttl && iph->ttl < filter.min_ttl)
-      //   continue;
-      // if (filter.check_max_ttl && iph->ttl > filter.max_ttl)
-      //   continue;
-      // if (filter.check_min_len && bpf_ntohs(iph->tot_len) < filter.min_len)
-      //   continue;
-      // if (filter.check_max_len && bpf_ntohs(iph->tot_len) > filter.max_len)
-      //   continue;
-    } else if (iph6 != NULL) {
-      continue;
-    }
-    if (filter.tcpopts.enabled) {
-      continue;
-    } else if (filter.udpopts.enabled) {
-      if (udph == NULL)
-        continue;
-      if (filter.udpopts.check_sport && bpf_htons(filter.udpopts.sport) != udph->source)
-        continue;
-      if (filter.udpopts.check_dport && bpf_htons(filter.udpopts.dport) != udph->dest)
-        continue;
-    } else if (filter.icmpopts.enabled) {
-      if (icmph != NULL) {
-        continue;
-      } else if (icmp6h != NULL) {
-        continue;
-      } else {
-        continue;
-      }
-    } else {
-      continue;
-    }
-  }
+//   for (int i = 0; i < 32; i++) {
+//     if (iph != NULL) {
+//       if (filter.ip_saddr && iph->saddr != filter.ip_saddr) //TODO エンディアン?
+//         continue;
+//       if (filter.ip_daddr && iph->daddr != filter.ip_daddr)
+//         continue;
+//       // TODO ALLOWSINGLEIPV4V6 への対応
+//       // if (filter.check_tos && iph->tos != filter.tos)
+//       //   continue;
+//       // if (filter.check_min_ttl && iph->ttl < filter.min_ttl)
+//       //   continue;
+//       // if (filter.check_max_ttl && iph->ttl > filter.max_ttl)
+//       //   continue;
+//       // if (filter.check_min_len && bpf_ntohs(iph->tot_len) < filter.min_len)
+//       //   continue;
+//       // if (filter.check_max_len && bpf_ntohs(iph->tot_len) > filter.max_len)
+//       //   continue;
+//     } else if (iph6 != NULL) {
+//       continue;
+//     }
+//     if (filter.tcpopts.enabled) {
+//       continue;
+//     } else if (filter.udpopts.enabled) {
+//       if (udph == NULL)
+//         continue;
+//       if (filter.udpopts.check_sport && bpf_htons(filter.udpopts.sport) != udph->source)
+//         continue;
+//       if (filter.udpopts.check_dport && bpf_htons(filter.udpopts.dport) != udph->dest)
+//         continue;
+//     } else if (filter.icmpopts.enabled) {
+//       if (icmph != NULL) {
+//         continue;
+//       } else if (icmp6h != NULL) {
+//         continue;
+//       } else {
+//         continue;
+//       }
+//     } else {
+//       continue;
+//     }
+//   }
 //   swap_src_dst_mac(data);
   pcn_log(ctx, LOG_DEBUG, "Sending packet to slow path");
   pcn_pkt_controller(ctx, md, SLOWPATH_REASON);
